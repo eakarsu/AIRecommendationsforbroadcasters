@@ -201,6 +201,18 @@ const featureConfig = {
     ai: 'search',
     isSearch: true,
   },
+  'ai-insights-dashboard': {
+    columns: ['title', 'type', 'confidence', 'status', 'aiModel', 'createdAt'],
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', required: true },
+      { key: 'type', label: 'Type', type: 'select', options: ['recommendation', 'trend_analysis', 'audience_insight', 'content_optimization', 'schedule_suggestion'], required: true },
+      { key: 'summary', label: 'Summary', type: 'textarea' },
+      { key: 'confidence', label: 'Confidence', type: 'number' },
+      { key: 'status', label: 'Status', type: 'select', options: ['new', 'reviewed', 'implemented', 'dismissed'] },
+    ],
+    detailFields: ['title', 'type', 'summary', 'confidence', 'status', 'aiModel', 'details'],
+    ai: 'insight',
+  },
 };
 
 function formatValue(val, key) {
@@ -245,6 +257,10 @@ export default function FeaturePage({ feature, user }) {
   const [aiData, setAiData] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
+  const [enrichingId, setEnrichingId] = useState(null);
+  const [computingTrending, setComputingTrending] = useState(false);
 
   const config = featureConfig[feature.key] || { columns: [], fields: [], detailFields: [] };
 
@@ -259,14 +275,24 @@ export default function FeaturePage({ feature, user }) {
       if (config.isSearch) {
         setItems([]);
       } else {
-        const data = await api.getAll(feature.key);
-        setItems(data);
+        const resourceKey = feature.key === 'ai-insights-dashboard' ? 'insights' : feature.key;
+        const response = await api.getAll(resourceKey, { page });
+        // Handle both paginated and non-paginated responses
+        if (response && response.data) {
+          setItems(response.data);
+          setPagination(response.pagination || null);
+        } else if (Array.isArray(response)) {
+          setItems(response);
+          setPagination(null);
+        } else {
+          setItems([]);
+        }
       }
     } catch (err) {
       showNotification(err.message, 'error');
     }
     setLoading(false);
-  }, [feature.key]);
+  }, [feature.key, page]);
 
   useEffect(() => {
     loadData();
@@ -274,7 +300,7 @@ export default function FeaturePage({ feature, user }) {
     setShowForm(false);
     setAiData(null);
     setSearchQuery('');
-  }, [feature.key, loadData]);
+  }, [feature.key, page, loadData]);
 
   const handleRowClick = async (item) => {
     try {
@@ -354,11 +380,12 @@ export default function FeaturePage({ feature, user }) {
       let result;
       if (feature.key === 'recommendations') {
         result = await api.aiRecommend(user?.id || 1);
+        loadData();
       } else if (feature.key === 'trending') {
         result = await api.aiTrendPredict();
       } else if (feature.key === 'analytics') {
         result = await api.aiAnalyze();
-      } else if (feature.key === 'insights') {
+      } else if (feature.key === 'insights' || feature.key === 'ai-insights-dashboard') {
         result = await api.aiInsight('content_optimization');
         loadData();
       } else if (feature.key === 'search') {
@@ -375,6 +402,31 @@ export default function FeaturePage({ feature, user }) {
       showNotification(err.message, 'error');
     }
     setAiLoading(false);
+  };
+
+  const handleComputeTrending = async () => {
+    setComputingTrending(true);
+    try {
+      const data = await api.computeTrending();
+      showNotification(`Trending computed: ${data.updates?.length || 0} items updated`);
+      loadData();
+    } catch (err) {
+      showNotification(err.message, 'error');
+    }
+    setComputingTrending(false);
+  };
+
+  const handleEnrichContent = async (id) => {
+    setEnrichingId(id);
+    try {
+      const data = await api.enrichContent(id);
+      showNotification(`Content enriched with AI metadata`);
+      loadData();
+      if (data.ai) setAiData(data.ai);
+    } catch (err) {
+      showNotification(err.message, 'error');
+    }
+    setEnrichingId(null);
   };
 
   const handleSearch = async () => {
@@ -410,10 +462,16 @@ export default function FeaturePage({ feature, user }) {
           </div>
           <div>
             <h1>{feature.label}</h1>
-            <p>{items.length} items</p>
+            <p>{pagination ? `${pagination.total} total items` : `${items.length} items`}</p>
           </div>
         </div>
         <div className="page-actions">
+          {feature.key === 'trending' && (
+            <button className="btn btn-secondary" onClick={handleComputeTrending} disabled={computingTrending}>
+              <span className="material-icons-round">calculate</span>
+              {computingTrending ? 'Computing...' : 'Compute Trending'}
+            </button>
+          )}
           {config.ai && (
             <button className="btn btn-ai" onClick={handleAI} disabled={aiLoading}>
               <span className="material-icons-round">auto_awesome</span>
@@ -476,7 +534,7 @@ export default function FeaturePage({ feature, user }) {
             <tbody>
               {items.map((item, idx) => (
                 <tr key={item.id} onClick={() => handleRowClick(item)}>
-                  <td style={{ color: 'var(--text-muted)', width: 40 }}>{idx + 1}</td>
+                  <td style={{ color: 'var(--text-muted)', width: 40 }}>{((page - 1) * 20) + idx + 1}</td>
                   {config.columns.map(col => (
                     <td key={col}>
                       {(col === 'status' || col === 'isActive' || col === 'isLive' || col === 'completed' || col === 'verified') ? (
@@ -490,10 +548,29 @@ export default function FeaturePage({ feature, user }) {
                       )}
                     </td>
                   ))}
+                  {feature.key === 'content' && (
+                    <td onClick={e => e.stopPropagation()}>
+                      <button
+                        className="btn btn-ai btn-sm"
+                        style={{ fontSize: 11, padding: '4px 8px' }}
+                        onClick={() => handleEnrichContent(item.id)}
+                        disabled={enrichingId === item.id}
+                      >
+                        {enrichingId === item.id ? '...' : 'Enrich'}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
+          {pagination && pagination.totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 8, padding: '16px', justifyContent: 'center', alignItems: 'center' }}>
+              <button className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>&#8592; Prev</button>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Page {page} of {pagination.totalPages}</span>
+              <button className="btn btn-secondary btn-sm" disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}>Next &#8594;</button>
+            </div>
+          )}
         </div>
       ) : config.isSearch ? (
         <div className="empty-state">

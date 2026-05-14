@@ -1,13 +1,19 @@
 const express = require('express');
 const { AIInsight, Content, Analytics } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
-const { callOpenRouter } = require('../middleware/openrouter');
+const { callOpenRouter, aiRateLimiter } = require('../middleware/openrouter');
 const router = express.Router();
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const items = await AIInsight.findAll({ order: [['createdAt', 'DESC']] });
-    res.json(items);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+    const { count, rows } = await AIInsight.findAndCountAll({
+      order: [['createdAt', 'DESC']],
+      limit, offset
+    });
+    res.json({ data: rows, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -44,12 +50,14 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// AI Generate Insight
-router.post('/ai-generate', authenticateToken, async (req, res) => {
+// AI Generate Insight — always persists to AIInsight table
+router.post('/ai-generate', authenticateToken, aiRateLimiter, async (req, res) => {
   try {
     const { type } = req.body;
-    const content = await Content.findAll({ limit: 20 });
-    const analytics = await Analytics.findAll({ limit: 30 });
+    const [content, analytics] = await Promise.all([
+      Content.findAll({ limit: 20 }),
+      Analytics.findAll({ limit: 30 })
+    ]);
 
     const prompts = {
       content_optimization: 'Analyze our content catalog and suggest optimizations for better viewer engagement.',
@@ -59,26 +67,26 @@ router.post('/ai-generate', authenticateToken, async (req, res) => {
       recommendation: 'Provide strategic recommendations for content acquisition and production.'
     };
 
+    const validTypes = ['recommendation', 'trend_analysis', 'audience_insight', 'content_optimization', 'schedule_suggestion'];
+    const insightType = validTypes.includes(type) ? type : 'recommendation';
+
     const result = await callOpenRouter([
       { role: 'system', content: 'You are a strategic AI advisor for a major broadcaster. Provide deep, actionable insights. Return a JSON object with: title (string), sections (array of {heading, items}), and summary (string). Items should have contextually appropriate fields.' },
-      { role: 'user', content: `${prompts[type] || prompts.recommendation}\n\nContent catalog: ${JSON.stringify(content.map(c => ({ title: c.title, type: c.type, genre: c.genre, rating: c.rating, viewCount: c.viewCount })))}\n\nAnalytics: ${JSON.stringify(analytics.map(a => ({ metric: a.metric, value: a.value, date: a.date })))}` }
-    ]);
+      { role: 'user', content: `${prompts[insightType] || prompts.recommendation}\n\nContent catalog: ${JSON.stringify(content.map(c => ({ title: c.title, type: c.type, genre: c.genre, rating: c.rating, viewCount: c.viewCount })))}\n\nAnalytics: ${JSON.stringify(analytics.map(a => ({ metric: a.metric, value: a.value, date: a.date })))}` }
+    ], { maxTokens: 2048, json: true });
 
     let aiData = result.data;
-    if (result.success && typeof aiData === 'string') {
-      try { aiData = JSON.parse(aiData); } catch (e) { aiData = { title: 'AI Insight', sections: [{ heading: 'Analysis', items: [{ point: aiData }] }], summary: aiData }; }
-    }
     if (result.mock) aiData = result.data;
 
-    // Save insight
+    // Persist to AIInsight table
     const insight = await AIInsight.create({
-      title: aiData.title || `AI ${type || 'General'} Insight`,
-      type: type || 'recommendation',
-      summary: aiData.summary || '',
-      details: aiData,
+      title: aiData?.title || `AI ${insightType} Insight`,
+      type: insightType,
+      summary: aiData?.summary || '',
+      details: aiData || {},
       confidence: 0.85,
-      aiModel: process.env.OPENROUTER_MODEL,
-      aiResponse: aiData
+      aiModel: result.model || process.env.OPENROUTER_MODEL || 'anthropic/claude-3-5-sonnet-20241022',
+      aiResponse: aiData || {}
     });
 
     res.json({ ai: aiData, insight });

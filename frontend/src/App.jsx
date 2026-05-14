@@ -3,7 +3,34 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import FeaturePage from './pages/FeaturePage';
+import AIRecommendPage from './pages/AIRecommendPage';
+import AITrendDetectorPage from './pages/AITrendDetectorPage';
+import AIAudienceSegmentationPage from './pages/AIAudienceSegmentationPage';
+import AIChurnPredictionPage from './pages/AIChurnPredictionPage';
 import Sidebar from './components/Sidebar';
+
+// === Batch 07 Gaps & Frontend Mounts ===
+import CfPersonalizedScheduleGeneration from './pages/CfPersonalizedScheduleGeneration';
+import CfMulticategoryPlaylistBuilder from './pages/CfMulticategoryPlaylistBuilder';
+import CfLiveEventOptimization from './pages/CfLiveEventOptimization';
+import CfChurnPredictionRetention from './pages/CfChurnPredictionRetention';
+import CfCollaborativeFilteringAtScale from './pages/CfCollaborativeFilteringAtScale';
+import CfSportsspecificIntelligence from './pages/CfSportsspecificIntelligence';
+import GapNoRecommendPersonalizedContentRecommenda from './pages/GapNoRecommendPersonalizedContentRecommenda';
+import GapNoScheduleoptimizerProgrammingScheduleVi from './pages/GapNoScheduleoptimizerProgrammingScheduleVi';
+import GapNoTrenddetectorEmergingContentDiscovery from './pages/GapNoTrenddetectorEmergingContentDiscovery';
+import GapNoAudiencesegmentationTasteClustering from './pages/GapNoAudiencesegmentationTasteClustering';
+import GapNoSportshighlightextractionAutoclipMoment from './pages/GapNoSportshighlightextractionAutoclipMoment';
+import GapNoSubtitlegenerationAutoCaptions from './pages/GapNoSubtitlegenerationAutoCaptions';
+import GapNoUserPreferenceLearningLoopImplicitFe from './pages/GapNoUserPreferenceLearningLoopImplicitFe';
+import GapNoAbTestingFrameworkForScheduleChanges from './pages/GapNoAbTestingFrameworkForScheduleChanges';
+import GapLimitedAudienceAnalyticsDepth from './pages/GapLimitedAudienceAnalyticsDepth';
+import GapNoSportsDataApiIntegrationScoresStats from './pages/GapNoSportsDataApiIntegrationScoresStats';
+import GapNoCdnstreamingPlatformIntegration from './pages/GapNoCdnstreamingPlatformIntegration';
+import GapNoAdmonetizationLayer from './pages/GapNoAdmonetizationLayer';
+import GapNoNotificationsalertsForNewContent from './pages/GapNoNotificationsalertsForNewContent';
+// === End Batch 07 ===
+
 
 const features = [
   { key: 'content', label: 'Content Catalog', icon: 'movie', color: '#6366f1' },
@@ -21,6 +48,7 @@ const features = [
   { key: 'analytics', label: 'Analytics', icon: 'analytics', color: '#6366f1', ai: true },
   { key: 'insights', label: 'AI Insights', icon: 'psychology', color: '#8b5cf6', ai: true },
   { key: 'search', label: 'AI Search', icon: 'search', color: '#0ea5e9', ai: true },
+  { key: 'ai-insights-dashboard', label: 'AI Dashboard', icon: 'dashboard', color: '#f59e0b', ai: true },
 ];
 
 export default function App() {
@@ -69,10 +97,35 @@ export default function App() {
       <main className={`main-content ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
         <Routes>
           <Route path="/dashboard" element={<Dashboard features={features} />} />
+          <Route path="/ai-recommend" element={<AIRecommendPage user={user} />} />
+          <Route path="/ai-trend-detector" element={<AITrendDetectorPage />} />
+          <Route path="/ai-audience-segmentation" element={<AIAudienceSegmentationPage />} />
+          <Route path="/ai-churn-prediction" element={<AIChurnPredictionPage />} />
           {features.map(f => (
             <Route key={f.key} path={`/${f.key}`} element={<FeaturePage feature={f} user={user} />} />
           ))}
           <Route path="*" element={<Navigate to="/dashboard" />} />
+          // === Batch 07 Gaps & Frontend Mounts ===
+          <Route path='/cf-personalized-schedule-generation' element={<CfPersonalizedScheduleGeneration />} />
+          <Route path='/cf-multicategory-playlist-builder' element={<CfMulticategoryPlaylistBuilder />} />
+          <Route path='/cf-live-event-optimization' element={<CfLiveEventOptimization />} />
+          <Route path='/cf-churn-prediction-retention' element={<CfChurnPredictionRetention />} />
+          <Route path='/cf-collaborative-filtering-at-scale' element={<CfCollaborativeFilteringAtScale />} />
+          <Route path='/cf-sportsspecific-intelligence' element={<CfSportsspecificIntelligence />} />
+          <Route path='/gap-no-recommend-personalized-content-recommenda' element={<GapNoRecommendPersonalizedContentRecommenda />} />
+          <Route path='/gap-no-scheduleoptimizer-programming-schedule-vi' element={<GapNoScheduleoptimizerProgrammingScheduleVi />} />
+          <Route path='/gap-no-trenddetector-emerging-content-discovery' element={<GapNoTrenddetectorEmergingContentDiscovery />} />
+          <Route path='/gap-no-audiencesegmentation-taste-clustering' element={<GapNoAudiencesegmentationTasteClustering />} />
+          <Route path='/gap-no-sportshighlightextraction-autoclip-moment' element={<GapNoSportshighlightextractionAutoclipMoment />} />
+          <Route path='/gap-no-subtitlegeneration-auto-captions' element={<GapNoSubtitlegenerationAutoCaptions />} />
+          <Route path='/gap-no-user-preference-learning-loop-implicit-fe' element={<GapNoUserPreferenceLearningLoopImplicitFe />} />
+          <Route path='/gap-no-ab-testing-framework-for-schedule-changes' element={<GapNoAbTestingFrameworkForScheduleChanges />} />
+          <Route path='/gap-limited-audience-analytics-depth' element={<GapLimitedAudienceAnalyticsDepth />} />
+          <Route path='/gap-no-sports-data-api-integration-scores-stats' element={<GapNoSportsDataApiIntegrationScoresStats />} />
+          <Route path='/gap-no-cdnstreaming-platform-integration' element={<GapNoCdnstreamingPlatformIntegration />} />
+          <Route path='/gap-no-admonetization-layer' element={<GapNoAdmonetizationLayer />} />
+          <Route path='/gap-no-notificationsalerts-for-new-content' element={<GapNoNotificationsalertsForNewContent />} />
+          // === End Batch 07 ===
         </Routes>
       </main>
     </div>

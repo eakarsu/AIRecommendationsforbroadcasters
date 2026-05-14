@@ -1,19 +1,24 @@
 const express = require('express');
-const { Recommendation, User, Content, ViewingHistory, UserProfile } = require('../models');
+const { Recommendation, User, Content, ViewingHistory, UserProfile, AIInsight } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
-const { callOpenRouter } = require('../middleware/openrouter');
+const { callOpenRouter, aiRateLimiter } = require('../middleware/openrouter');
 const router = express.Router();
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const items = await Recommendation.findAll({
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Recommendation.findAndCountAll({
       include: [
         { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
         { model: Content, as: 'content' }
       ],
-      order: [['score', 'DESC']]
+      order: [['score', 'DESC']],
+      limit, offset
     });
-    res.json(items);
+    res.json({ data: rows, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -55,30 +60,63 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// AI Generate Recommendations
-router.post('/ai-generate', authenticateToken, async (req, res) => {
+// AI Generate Recommendations — inserts into Recommendation table + AIInsight
+router.post('/ai-generate', authenticateToken, aiRateLimiter, async (req, res) => {
   try {
+    if (req.rateLimitExceeded) return res.status(503).json({ error: 'AI service unavailable' });
     const userId = req.body.userId || req.user.id;
-    const history = await ViewingHistory.findAll({
-      where: { userId },
-      include: [{ model: Content, as: 'content' }],
-      limit: 20
-    });
-    const profile = await UserProfile.findOne({ where: { userId } });
-    const allContent = await Content.findAll({ limit: 30 });
 
-    const result = await callOpenRouter([
-      { role: 'system', content: 'You are a content recommendation AI for a major broadcaster with diverse content from live sports to soap operas. Generate personalized recommendations. Return a JSON object with: title (string), sections (array of {heading, items}), and summary (string). Each item should have: name, confidence (number 0-100), reason (string).' },
-      { role: 'user', content: `Generate personalized content recommendations based on:\n\nUser Profile: ${JSON.stringify(profile || {})}\n\nViewing History: ${JSON.stringify(history.map(h => h.content?.title))}\n\nAvailable Content: ${JSON.stringify(allContent.map(c => ({ title: c.title, type: c.type, genre: c.genre, rating: c.rating })))}` }
+    const [history, profile, allContent] = await Promise.all([
+      ViewingHistory.findAll({ where: { userId }, include: [{ model: Content, as: 'content' }], limit: 20 }),
+      UserProfile.findOne({ where: { userId } }),
+      Content.findAll({ where: { status: 'active' }, limit: 50 })
     ]);
 
+    const result = await callOpenRouter([
+      { role: 'system', content: 'You are a content recommendation AI for a major broadcaster. Generate personalized recommendations. Return a JSON object with: title (string), sections (array of {heading, items}), and summary (string). Each item must have: contentTitle (string), confidence (number 0-100), reason (string).' },
+      { role: 'user', content: `Generate personalized content recommendations based on:\n\nUser Profile: ${JSON.stringify(profile || {})}\n\nViewing History: ${JSON.stringify(history.map(h => h.content?.title))}\n\nAvailable Content: ${JSON.stringify(allContent.map(c => ({ id: c.id, title: c.title, type: c.type, genre: c.genre, rating: c.rating })))}` }
+    ], { maxTokens: 2048, json: true });
+
     let aiData = result.data;
-    if (result.success && typeof aiData === 'string') {
-      try { aiData = JSON.parse(aiData); } catch (e) { aiData = { title: 'Recommendations', sections: [{ heading: 'AI Recommendations', items: [{ point: aiData }] }], summary: aiData }; }
-    }
     if (result.mock) aiData = result.data;
 
-    res.json({ ai: aiData });
+    // Persist AIInsight
+    const insight = await AIInsight.create({
+      title: aiData?.title || 'AI Recommendations',
+      type: 'recommendation',
+      summary: aiData?.summary || '',
+      details: aiData || {},
+      confidence: 0.85,
+      aiModel: result.model || process.env.OPENROUTER_MODEL || 'anthropic/claude-3-5-sonnet-20241022',
+      aiResponse: aiData || {}
+    });
+
+    // Insert recommendations into Recommendation table
+    const createdRecs = [];
+    if (aiData?.sections) {
+      for (const section of aiData.sections) {
+        for (const item of (section.items || [])) {
+          const matchedContent = allContent.find(c =>
+            c.title.toLowerCase().includes((item.contentTitle || item.name || '').toLowerCase()) ||
+            (item.contentTitle || item.name || '').toLowerCase().includes(c.title.toLowerCase())
+          );
+          if (matchedContent) {
+            const rec = await Recommendation.create({
+              userId,
+              contentId: matchedContent.id,
+              reason: item.reason || section.heading,
+              score: (item.confidence || 75) / 100,
+              algorithm: 'ai_personalized',
+              status: 'active',
+              aiResponse: item
+            }).catch(() => null);
+            if (rec) createdRecs.push(rec);
+          }
+        }
+      }
+    }
+
+    res.json({ ai: aiData, insight, recommendationsCreated: createdRecs.length });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
