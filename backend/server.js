@@ -33,6 +33,9 @@ app.use('/api/ai', require('./routes/aiSchedule'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/profiles', require('./routes/profiles'));
 
+// Custom Views (mounted BEFORE 404 handler)
+app.use('/api/custom-views', require('./routes/customViews'));
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

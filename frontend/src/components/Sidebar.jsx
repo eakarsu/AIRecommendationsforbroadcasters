@@ -67,6 +67,16 @@ export default function Sidebar({ features, open, onToggle, user, onLogout }) {
             )}
           </div>
         ))}
+
+        {open && <div className="nav-section-label">Custom</div>}
+        <div
+          className={`nav-item ${location.pathname === '/custom-views' ? 'active' : ''}`}
+          onClick={() => navigate('/custom-views')}
+          data-testid="nav-broadcast-views"
+        >
+          <span className="material-icons-round" style={{ color: '#0ea5e9' }}>insights</span>
+          {open && <span>Broadcast Views</span>}
+        </div>
       </div>
 
       <div className="sidebar-footer">

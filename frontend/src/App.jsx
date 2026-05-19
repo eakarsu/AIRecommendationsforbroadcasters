@@ -7,6 +7,7 @@ import AIRecommendPage from './pages/AIRecommendPage';
 import AITrendDetectorPage from './pages/AITrendDetectorPage';
 import AIAudienceSegmentationPage from './pages/AIAudienceSegmentationPage';
 import AIChurnPredictionPage from './pages/AIChurnPredictionPage';
+import CustomViewsPage from './pages/CustomViewsPage';
 import Sidebar from './components/Sidebar';
 
 // === Batch 07 Gaps & Frontend Mounts ===
@@ -101,6 +102,7 @@ export default function App() {
           <Route path="/ai-trend-detector" element={<AITrendDetectorPage />} />
           <Route path="/ai-audience-segmentation" element={<AIAudienceSegmentationPage />} />
           <Route path="/ai-churn-prediction" element={<AIChurnPredictionPage />} />
+          <Route path="/custom-views" element={<CustomViewsPage />} />
           {features.map(f => (
             <Route key={f.key} path={`/${f.key}`} element={<FeaturePage feature={f} user={user} />} />
           ))}
