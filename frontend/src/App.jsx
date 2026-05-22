@@ -30,6 +30,11 @@ import GapNoSportsDataApiIntegrationScoresStats from './pages/GapNoSportsDataApi
 import GapNoCdnstreamingPlatformIntegration from './pages/GapNoCdnstreamingPlatformIntegration';
 import GapNoAdmonetizationLayer from './pages/GapNoAdmonetizationLayer';
 import GapNoNotificationsalertsForNewContent from './pages/GapNoNotificationsalertsForNewContent';
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
+
 // === End Batch 07 ===
 
 
@@ -97,6 +102,10 @@ export default function App() {
       />
       <main className={`main-content ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
         <Routes>
+        <Route path="/insights/timeline" element={<TimelineView />} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
           <Route path="/dashboard" element={<Dashboard features={features} />} />
           <Route path="/ai-recommend" element={<AIRecommendPage user={user} />} />
           <Route path="/ai-trend-detector" element={<AITrendDetectorPage />} />
@@ -106,8 +115,6 @@ export default function App() {
           {features.map(f => (
             <Route key={f.key} path={`/${f.key}`} element={<FeaturePage feature={f} user={user} />} />
           ))}
-          <Route path="*" element={<Navigate to="/dashboard" />} />
-          // === Batch 07 Gaps & Frontend Mounts ===
           <Route path='/cf-personalized-schedule-generation' element={<CfPersonalizedScheduleGeneration />} />
           <Route path='/cf-multicategory-playlist-builder' element={<CfMulticategoryPlaylistBuilder />} />
           <Route path='/cf-live-event-optimization' element={<CfLiveEventOptimization />} />
@@ -127,7 +134,7 @@ export default function App() {
           <Route path='/gap-no-cdnstreaming-platform-integration' element={<GapNoCdnstreamingPlatformIntegration />} />
           <Route path='/gap-no-admonetization-layer' element={<GapNoAdmonetizationLayer />} />
           <Route path='/gap-no-notificationsalerts-for-new-content' element={<GapNoNotificationsalertsForNewContent />} />
-          // === End Batch 07 ===
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
       </main>
     </div>
