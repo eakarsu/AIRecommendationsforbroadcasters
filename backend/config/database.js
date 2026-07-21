@@ -1,13 +1,7 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME || 'broadcaster_db',
-  process.env.DB_USER || 'postgres',
-  process.env.DB_PASSWORD || null,
-  {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     logging: false,
     pool: {
@@ -16,7 +10,6 @@ const sequelize = new Sequelize(
       acquire: 30000,
       idle: 10000
     }
-  }
-);
+});
 
 module.exports = sequelize;

@@ -8,6 +8,7 @@ const { sequelize } = require('./models');
 const app = express();
 const PORT = process.env.BACKEND_PORT || 4001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+if ((process.env.JWT_SECRET || '').length < 32 || !process.env.GOVERNANCE_TENANT_ID || !process.env.DATABASE_URL) throw new Error('JWT_SECRET (32+ characters), GOVERNANCE_TENANT_ID, and DATABASE_URL are required');
 
 // Middleware
 app.use(helmet());
@@ -29,7 +30,7 @@ app.use('/api/trending', require('./routes/trending'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/recommendations', require('./routes/recommendations'));
 app.use('/api/insights', require('./routes/insights'));
-app.use('/api/ai', require('./routes/aiSchedule'));
+if (process.env.ENABLE_GENERATED_ROUTES === 'true' && process.env.NODE_ENV !== 'production') app.use('/api/ai', require('./routes/aiSchedule'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/profiles', require('./routes/profiles'));
 
@@ -40,14 +41,14 @@ app.use('/api/custom-views', require('./routes/customViews'));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+app.use('/api/governed-broadcast-creation', require('./governance'));
+if (process.env.ENABLE_GENERATED_ROUTES === 'true' && process.env.NODE_ENV !== 'production') app.use('/api/ai/personalized-schedule', require('./routes/ai-personalized-schedule'));
 
 // Start server
 async function start() {
   try {
     await sequelize.authenticate();
     console.log('Database connected');
-    await sequelize.sync({ alter: false });
-    console.log('Models synced');
     app.listen(PORT, () => {
       console.log(`Backend running on http://localhost:${PORT}`);
     });
@@ -58,21 +59,3 @@ async function start() {
 }
 
 start();
-
-// AI feature mount: personalized-schedule
-app.use('/api/ai/personalized-schedule', require('./routes/ai-personalized-schedule'));
-// === Batch 07 Gaps & Frontend Mounts ===
-app.use('/api/gap-no-recommend-personalized-content-recommenda', require('./routes/gap-no-recommend-personalized-content-recommenda'));
-app.use('/api/gap-no-scheduleoptimizer-programming-schedule-vi', require('./routes/gap-no-scheduleoptimizer-programming-schedule-vi'));
-app.use('/api/gap-no-trenddetector-emerging-content-discovery', require('./routes/gap-no-trenddetector-emerging-content-discovery'));
-app.use('/api/gap-no-audiencesegmentation-taste-clustering', require('./routes/gap-no-audiencesegmentation-taste-clustering'));
-app.use('/api/gap-no-sportshighlightextraction-autoclip-moment', require('./routes/gap-no-sportshighlightextraction-autoclip-moment'));
-app.use('/api/gap-no-subtitlegeneration-auto-captions', require('./routes/gap-no-subtitlegeneration-auto-captions'));
-app.use('/api/gap-no-user-preference-learning-loop-implicit-fe', require('./routes/gap-no-user-preference-learning-loop-implicit-fe'));
-app.use('/api/gap-no-ab-testing-framework-for-schedule-changes', require('./routes/gap-no-ab-testing-framework-for-schedule-changes'));
-app.use('/api/gap-limited-audience-analytics-depth', require('./routes/gap-limited-audience-analytics-depth'));
-app.use('/api/gap-no-sports-data-api-integration-scores-stats', require('./routes/gap-no-sports-data-api-integration-scores-stats'));
-app.use('/api/gap-no-cdnstreaming-platform-integration', require('./routes/gap-no-cdnstreaming-platform-integration'));
-app.use('/api/gap-no-admonetization-layer', require('./routes/gap-no-admonetization-layer'));
-app.use('/api/gap-no-notificationsalerts-for-new-content', require('./routes/gap-no-notificationsalerts-for-new-content'));
-// === End Batch 07 ===

@@ -24,9 +24,10 @@ router.post('/login', async (req, res) => {
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role } = req.body;
+    const { email, password, name } = req.body;
+    if (!email || !name || typeof password !== 'string' || password.length < 12) return res.status(400).json({ error: 'Email, name, and a password of at least 12 characters are required' });
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password: hashed, name, role: role || 'viewer' });
+    const user = await User.create({ email, password: hashed, name, role: 'viewer' });
     const token = generateToken(user);
     res.status(201).json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
   } catch (err) {

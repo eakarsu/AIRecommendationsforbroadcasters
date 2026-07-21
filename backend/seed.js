@@ -8,12 +8,14 @@ const {
 
 async function seed() {
   try {
+    if (process.env.ALLOW_DESTRUCTIVE_SEED !== '1') throw new Error('Set ALLOW_DESTRUCTIVE_SEED=1 only for an isolated demo database');
+    if ((process.env.SEED_USER_PASSWORD || '').length < 12) throw new Error('SEED_USER_PASSWORD must contain at least 12 characters');
     await sequelize.authenticate();
     await sequelize.sync({ force: true });
     console.log('  Database tables created.');
 
     // ==================== USERS ====================
-    const hashedPw = await bcrypt.hash('password123', 10);
+    const hashedPw = await bcrypt.hash(process.env.SEED_USER_PASSWORD, 10);
     const users = await User.bulkCreate([
       { email: 'admin@broadcastai.com', password: hashedPw, name: 'Admin User', role: 'admin' },
       { email: 'editor@broadcastai.com', password: hashedPw, name: 'Sarah Editor', role: 'editor' },
