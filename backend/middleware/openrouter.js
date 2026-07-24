@@ -1,4 +1,3 @@
-const https = require('https');
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 
 // 3-strategy JSON parser
@@ -20,78 +19,34 @@ function parseAIJson(text) {
 
 async function callOpenRouter(messages, options = {}) {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = options.model || process.env.OPENROUTER_MODEL || 'anthropic/claude-3-5-sonnet-20241022';
+  const model = options.model || process.env.OPENROUTER_MODEL;
+  const baseUrl = String(process.env.OPENROUTER_BASE_URL || '').replace(/\/$/, '');
 
-  if (!apiKey || apiKey === 'your-openrouter-key-here') {
-    // Guard: production returns 503 instead of mock
-    if (process.env.NODE_ENV === 'production') {
-      return {
-        success: false,
-        error: 'AI service not available. API key not configured.',
-        status: 503,
-        data: null
-      };
-    }
-    return {
-      success: false,
-      error: 'OpenRouter API key not configured. Please set OPENROUTER_API_KEY in .env file.',
-      mock: true,
-      data: generateMockResponse(messages, options)
-    };
-  }
+  if (!apiKey || !model || !baseUrl || apiKey === 'your-openrouter-key-here') throw new Error('OpenRouter runtime configuration is required');
 
-  const payload = JSON.stringify({
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:5173',
+      'X-Title': 'BroadcastAI'
+    },
+    body: JSON.stringify({
     model,
     messages,
     max_tokens: options.maxTokens || 2048,
     temperature: options.temperature || 0.7,
     response_format: options.json ? { type: 'json_object' } : undefined
+    })
   });
-
-  return new Promise((resolve) => {
-    const req = https.request({
-      hostname: 'openrouter.ai',
-      path: '/api/v1/chat/completions',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:5173',
-        'X-Title': 'BroadcastAI'
-      }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.error) {
-            resolve({ success: false, error: parsed.error.message || 'API error', data: null });
-          } else {
-            const content = parsed.choices?.[0]?.message?.content || '';
-            // Try to parse JSON from response
-            const jsonData = parseAIJson(content);
-            resolve({
-              success: true,
-              data: jsonData || content,
-              rawData: content,
-              model: parsed.model,
-              usage: parsed.usage
-            });
-          }
-        } catch (e) {
-          resolve({ success: false, error: 'Failed to parse response', data: null });
-        }
-      });
-    });
-
-    req.on('error', (e) => {
-      resolve({ success: false, error: e.message, data: null });
-    });
-
-    req.write(payload);
-    req.end();
-  });
+  if (!response.ok) throw new Error(`OpenRouter request failed with HTTP ${response.status}`);
+  const parsed = await response.json();
+  if (parsed.error) throw new Error(parsed.error.message || 'OpenRouter API error');
+  const content = String(parsed.choices?.[0]?.message?.content || '').trim();
+  if (!content) throw new Error('OpenRouter returned empty content');
+  const jsonData = parseAIJson(content);
+  return { success: true, data: jsonData || content, rawData: content, model: parsed.model || model, usage: parsed.usage };
 }
 
 // Rate limiter: 20 req/hour per user/IP
