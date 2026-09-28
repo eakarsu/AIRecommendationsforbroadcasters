@@ -75,7 +75,7 @@ export default function Login({ onLogin }) {
           <p>Quick access for demo</p>
           <button className="quick-login-btn" onClick={quickLogin} type="button">
             <span className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 6 }}>bolt</span>
-            Fill Demo Credentials (admin@broadcastai.com)
+            Auto Fill Demo Credentials (admin@broadcastai.com)
           </button>
         </div>
       </div>
