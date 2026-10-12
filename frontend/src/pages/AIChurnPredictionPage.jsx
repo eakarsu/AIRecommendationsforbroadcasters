@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AIOutput from '../components/AIOutput';
+import FullFieldPresets from '../components/FullFieldPresets';
 
 export default function AIChurnPredictionPage() {
   const [windowDays, setWindowDays] = useState(30);
@@ -51,6 +52,16 @@ export default function AIChurnPredictionPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="data-table-container" style={{ padding: 24, marginBottom: 16 }}>
+        <FullFieldPresets
+          value={{ windowDays: String(windowDays ?? '') }}
+          presets={[
+            { label: 'Scenario', values: { windowDays: '30' } },
+            { label: 'Data sample', values: { windowDays: '60' } },
+            { label: 'Executive review', values: { windowDays: '90' } },
+          ]}
+          disabled={loading}
+          onChange={(next) => { setWindowDays(next.windowDays); setError(''); }}
+        />
         <div className="form-grid">
           <div className="form-group">
             <label>Lookback window (days)</label>

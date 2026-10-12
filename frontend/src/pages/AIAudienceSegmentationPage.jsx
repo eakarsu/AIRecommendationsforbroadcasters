@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AIOutput from '../components/AIOutput';
+import FullFieldPresets from '../components/FullFieldPresets';
 
 export default function AIAudienceSegmentationPage() {
   const [days, setDays] = useState(30);
@@ -48,6 +49,16 @@ export default function AIAudienceSegmentationPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="data-table-container" style={{ padding: 24, marginBottom: 16 }}>
+        <FullFieldPresets
+          value={{ days: String(days ?? ''), segmentCount: String(segmentCount ?? '') }}
+          presets={[
+            { label: 'Scenario', values: { days: '14', segmentCount: '3' } },
+            { label: 'Data sample', values: { days: '30', segmentCount: '4' } },
+            { label: 'Executive review', values: { days: '90', segmentCount: '6' } },
+          ]}
+          disabled={loading}
+          onChange={(next) => { setDays(next.days); setSegmentCount(next.segmentCount); setError(''); }}
+        />
         <div className="form-grid">
           <div className="form-group">
             <label>Window (days)</label>

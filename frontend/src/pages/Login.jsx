@@ -73,9 +73,9 @@ export default function Login({ onLogin }) {
 
         <div className="quick-login">
           <p>Quick access for demo</p>
-          <button className="quick-login-btn" onClick={quickLogin} type="button">
+          <button className="quick-login-btn" onClick={async (event) => { await (quickLogin)(event); window.setTimeout(() => { const form = document.querySelector("form"); if (form) form.requestSubmit(); }, 150); }} type="button">
             <span className="material-icons-round" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 6 }}>bolt</span>
-            Auto Fill Demo Credentials (admin@broadcastai.com)
+            Log In as Demo (admin@broadcastai.com)
           </button>
         </div>
       </div>

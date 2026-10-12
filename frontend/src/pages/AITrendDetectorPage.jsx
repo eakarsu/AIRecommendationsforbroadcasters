@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AIOutput from '../components/AIOutput';
+import FullFieldPresets from '../components/FullFieldPresets';
 
 export default function AITrendDetectorPage() {
   const [days, setDays] = useState(14);
@@ -47,6 +48,16 @@ export default function AITrendDetectorPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="data-table-container" style={{ padding: 24, marginBottom: 16 }}>
+        <FullFieldPresets
+          value={{ days: String(days ?? '') }}
+          presets={[
+            { label: 'Scenario', values: { days: '7' } },
+            { label: 'Data sample', values: { days: '14' } },
+            { label: 'Executive review', values: { days: '30' } },
+          ]}
+          disabled={loading}
+          onChange={(next) => { setDays(next.days); setError(''); }}
+        />
         <div className="form-grid">
           <div className="form-group">
             <label>Lookback window (days)</label>

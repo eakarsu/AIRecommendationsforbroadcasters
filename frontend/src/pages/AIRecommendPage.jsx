@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import AIOutput from '../components/AIOutput';
+import FullFieldPresets from '../components/FullFieldPresets';
 
 export default function AIRecommendPage({ user }) {
   const [userId, setUserId] = useState(user?.id || '');
@@ -53,6 +54,16 @@ export default function AIRecommendPage({ user }) {
       </div>
 
       <form onSubmit={handleSubmit} className="data-table-container" style={{ padding: 24, marginBottom: 16 }}>
+        <FullFieldPresets
+          value={{ userId: String(userId ?? ''), count: String(count ?? '') }}
+          presets={[
+            { label: 'Scenario', values: { userId: String(user?.id || 1), count: '5' } },
+            { label: 'Data sample', values: { userId: String(user?.id || 1), count: '10' } },
+            { label: 'Executive review', values: { userId: String(user?.id || 1), count: '20' } },
+          ]}
+          disabled={loading}
+          onChange={(next) => { setUserId(next.userId); setCount(next.count); setError(''); }}
+        />
         <div className="form-grid">
           <div className="form-group">
             <label>User ID *</label>
