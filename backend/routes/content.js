@@ -1,15 +1,26 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const { Content, Category, AIInsight } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { callOpenRouter, aiRateLimiter } = require('../middleware/openrouter');
 const router = express.Router();
-
+function buildWhere(q) { const w = {}; if (q.status) w.status = q.status; if (q.type) w.type = q.type; if (q.genre) w.genre = q.genre; if (q.search) w[Op.or] = ['title','description','genre'].map(f => ({ [f]: { [Op.iLike]: `%${q.search}%` } })); return w; }
+router.get('/export', authenticateToken, async (req, res) => {
+  try {
+    const rows = await Content.findAll({ where: buildWhere(req.query), order: [['createdAt', 'DESC']] });
+    const fmt = String(req.query.format || 'json').toLowerCase();
+    if (fmt === 'csv') { const h = ['id','title','type','genre','status','rating']; const esc = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; }; res.setHeader('Content-Type','text/csv'); res.setHeader('Content-Disposition','attachment; filename="content.csv"'); return res.send([h.join(','), ...rows.map(r => h.map(k => esc(r[k])).join(','))].join('\n')); }
+    if (fmt !== 'json') return res.status(400).json({ error: 'format must be json or csv' });
+    res.setHeader('Content-Disposition','attachment; filename="content.json"'); return res.json({ data: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const offset = (page - 1) * limit;
     const { count, rows } = await Content.findAndCountAll({
+      where: buildWhere(req.query),
       include: [{ model: Category, as: 'category' }],
       order: [['createdAt', 'DESC']],
       limit, offset

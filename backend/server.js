@@ -34,6 +34,7 @@ if (process.env.ENABLE_GENERATED_ROUTES === 'true' && process.env.NODE_ENV !== '
 app.use('/api/search', require('./routes/search'));
 app.use('/api/profiles', require('./routes/profiles'));
 
+app.use('/api/feature-pack', require('./routes/featurePack'));
 // Custom Views (mounted BEFORE 404 handler)
 app.use('/api/custom-views', require('./routes/customViews'));
 
